@@ -4,6 +4,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
+    phone?: string;
     role: string;
     restaurantId?: string;
     mustChangePassword?: boolean;
@@ -18,6 +19,14 @@ export interface AuthResponse {
     };
 }
 
+export interface UpdateProfileData {
+    name?: string;
+    email?: string;
+    phone?: string;
+    currentPassword?: string;
+    newPassword?: string;
+}
+
 export const apiLogin = async (credentials: any): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/auth/login', credentials);
     return response.data;
@@ -29,5 +38,10 @@ export const apiLogout = async (): Promise<void> => {
 
 export const apiGetMe = async (): Promise<{ success: boolean; data: { user: User } }> => {
     const response = await api.get('/auth/me');
+    return response.data;
+};
+
+export const apiUpdateProfile = async (data: UpdateProfileData): Promise<{ success: boolean; message: string; data: { user: User } }> => {
+    const response = await api.put('/auth/profile', data);
     return response.data;
 };
