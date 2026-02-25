@@ -7,7 +7,7 @@ import axios from '@/lib/axios';
 
 interface Notification {
     _id: string;
-    type: 'CONTACT_MESSAGE' | 'ORDER_ALERT' | 'PAYMENT_ALERT' | 'SYSTEM_ALERT' | 'REPORT_GENERATED';
+    type: string;
     title: string;
     message: string;
     data?: any;
@@ -51,7 +51,7 @@ const getSocketServerUrl = () => {
     return apiUrl.replace(/\/api\/?$/, '');
 };
 
-const notificationEnabledRoles = ['SUPERADMIN', 'RESTAURANT_ADMIN', 'ADMIN', 'MANAGER'];
+const notificationEnabledRoles = ['SUPERADMIN', 'RESTAURANT_ADMIN', 'ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'KITCHEN'];
 
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
@@ -164,8 +164,14 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 console.log('✅ Socket connected! ID:', socketInstance.id);
                 setIsConnected(true);
                 // Join role-based notification room
-                socketInstance.emit('join_notifications', user.role);
-                console.log('📤 Emitted join_notifications for role:', user.role);
+                if (user.restaurantId) {
+                    socketInstance.emit('join_notifications', { role: user.role, restaurantId: user.restaurantId });
+                    console.log('📤 Emitted join_notifications for role:', user.role, 'restaurant:', user.restaurantId);
+                } else {
+                    socketInstance.emit('join_notifications', user.role);
+                    console.log('📤 Emitted join_notifications for role:', user.role);
+                }
+                
                 fetchNotifications({ notifyOnNew: false });
             });
 
