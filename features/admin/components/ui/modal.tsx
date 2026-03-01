@@ -8,6 +8,7 @@ interface ModalProps {
     isOpen: boolean;
     onClose: () => void;
     title: string;
+    subtitle?: string;
     children: React.ReactNode;
     maxWidthClass?: string;
     showHeader?: boolean;
@@ -17,6 +18,7 @@ export const Modal: React.FC<ModalProps> = ({
     isOpen,
     onClose,
     title,
+    subtitle,
     children,
     maxWidthClass = 'max-w-lg',
     showHeader = true
@@ -30,6 +32,10 @@ export const Modal: React.FC<ModalProps> = ({
         } else {
             document.body.style.overflow = 'unset';
         }
+
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
     }, [isOpen]);
 
     if (!mounted || !isOpen) return null;
@@ -45,8 +51,11 @@ export const Modal: React.FC<ModalProps> = ({
             {/* Modal Content */}
             <div className={`relative w-full ${maxWidthClass} scale-100 rounded-2xl bg-white p-6 ring-1 ring-zinc-100 transition-all animate-in fade-in zoom-in duration-300 shadow-none`}>
                 {showHeader ? (
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-black tracking-tight text-zinc-900">{title}</h2>
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold tracking-tight text-zinc-900">{title}</h2>
+                            {subtitle && <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>}
+                        </div>
                         <button
                             onClick={onClose}
                             className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
