@@ -14,7 +14,8 @@ import {
     Printer
 } from 'lucide-react';
 import ConfirmationDialog from '@/features/admin/components/ui/confirmation-dialog';
-import api from '@/lib/axios';
+import { toast } from 'react-toastify';
+import { useMarkBillPrinted } from '@/hooks/useOrders';
 
 interface BillingViewProps {
     order: any;
@@ -28,7 +29,7 @@ export default function BillingView({ order, onClose, onBillPrinted }: BillingVi
     const [discount, setDiscount] = useState({ value: 0, type: 'FIXED' });
     const [printed, setPrinted] = useState(order.billPrinted || false);
     const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
-    const [isUpdating, setIsUpdating] = useState(false);
+    const markBillPrintedMutation = useMarkBillPrinted();
 
     const subtotal = order.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
     const discountAmount = discount.type === 'PERCENTAGE' ? (subtotal * discount.value) / 100 : discount.value;
@@ -45,10 +46,8 @@ export default function BillingView({ order, onClose, onBillPrinted }: BillingVi
     };
 
     const handleConfirmClose = async () => {
-        setIsUpdating(true);
         try {
-            // Mark bill as printed in backend
-            await api.patch(`/orders/${order._id}/mark-bill-printed`);
+            await markBillPrintedMutation.mutateAsync(order._id);
             setPrinted(true);
             setShowCloseConfirmation(false);
             
@@ -60,9 +59,7 @@ export default function BillingView({ order, onClose, onBillPrinted }: BillingVi
             onClose();
         } catch (error: any) {
             console.error('Failed to mark bill as printed:', error);
-            alert('Failed to update bill status. Please try again.');
-        } finally {
-            setIsUpdating(false);
+            toast.error('Failed to update bill status. Please try again.');
         }
     };
 
@@ -303,7 +300,7 @@ export default function BillingView({ order, onClose, onBillPrinted }: BillingVi
                         <div className="p-4 sm:p-6 bg-white border-t border-zinc-100 animate-in slide-in-from-bottom-2 sticky bottom-0">
                             <button 
                                 onClick={printSplitBill}
-                                className="w-full h-11 bg-[#FF5C00] text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#FF5C00]/90 active:scale-95 transition-all"
+                                className="w-full h-11 bg-[#FF5C00] text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#FF5C00]/90 transition-colors"
                             >
                                 <Printer size={18} />
                                 Print Bill for {selectedItemsForSplit.length} Item{selectedItemsForSplit.length > 1 ? 's' : ''}
@@ -376,7 +373,7 @@ export default function BillingView({ order, onClose, onBillPrinted }: BillingVi
                     <div className="p-4 sm:p-6 bg-zinc-50/50 border-t border-zinc-100 sticky bottom-0">
                         <button
                             onClick={printFullBill}
-                            className="w-full h-11 bg-[#FF5C00] text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-[#FF5C00]/90"
+                            className="w-full h-11 bg-[#FF5C00] text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors hover:bg-[#FF5C00]/90"
                         >
                             <Printer size={18} />
                             {printed ? 'Printed ✓' : 'Print Bill'}
