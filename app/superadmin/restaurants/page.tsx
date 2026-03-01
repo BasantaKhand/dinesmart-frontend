@@ -101,7 +101,7 @@ export default function RestaurantsPage() {
     });
 
     // Local filtering for search
-    const filteredRestaurants = restaurants.filter((restaurant) => {
+    const filteredRestaurants = restaurants.filter((restaurant: Restaurant) => {
         const matchesSearch =
             restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             restaurant.address?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -372,7 +372,7 @@ export default function RestaurantsPage() {
                             </thead>
 
                             <tbody className="divide-y divide-zinc-100/80 text-zinc-600">
-                                {filteredRestaurants.map((restaurant) => (
+                                {filteredRestaurants.map((restaurant: Restaurant) => (
                                     <tr
                                         key={restaurant._id}
                                         className="group transition-colors hover:bg-zinc-50/50"
