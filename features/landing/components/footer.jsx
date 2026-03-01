@@ -33,6 +33,11 @@ export function Footer() {
                 </a>
               </li>
               <li>
+                <a href="#pricing" className="hover:text-zinc-900">
+                  Pricing
+                </a>
+              </li>
+              <li>
                 <a href="#contact" className="hover:text-zinc-900">
                   Contact
                 </a>
@@ -49,12 +54,12 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#demo" className="hover:text-zinc-900">
-                  Book Demo
+                <a href="/auth/signup" className="hover:text-zinc-900">
+                  Get Started
                 </a>
               </li>
               <li>
-                <a href="/login" className="hover:text-zinc-900">
+                <a href="/auth/login" className="hover:text-zinc-900">
                   Login
                 </a>
               </li>
