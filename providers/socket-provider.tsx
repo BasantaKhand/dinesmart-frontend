@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './auth-provider';
-import axios from '@/lib/axios';
+import { getNotificationsApi, markNotificationReadApi, markAllNotificationsReadApi } from '@/api/notification.api';
 
 interface Notification {
     _id: string;
@@ -75,7 +75,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Fetch notifications from database
     const fetchNotifications = async (options?: { notifyOnNew?: boolean }) => {
         try {
-            const response = await axios.get('/notifications?limit=20');
+            const response = await getNotificationsApi({ limit: 20 });
             if (response.data.data) {
                 const fetchedNotifications: Notification[] = response.data.data.notifications || [];
                 setNotifications(fetchedNotifications);
@@ -103,7 +103,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Mark notification as read
     const markAsRead = async (notificationId: string) => {
         try {
-            await axios.put(`/notifications/${notificationId}/read`);
+            await markNotificationReadApi(notificationId);
             setNotifications(prev => prev.map((n) => (
                 n._id === notificationId ? { ...n, status: 'READ' } : n
             )));
@@ -116,7 +116,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const markAllAsRead = async () => {
         try {
-            await axios.put('/notifications/read-all');
+            await markAllNotificationsReadApi();
             unreadIdsRef.current.clear();
             await fetchNotifications();
         } catch (error) {
