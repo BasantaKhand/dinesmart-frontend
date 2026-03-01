@@ -11,19 +11,25 @@ export function Navbar() {
 
         <div className="hidden lg:flex flex-1 items-center justify-center gap-8 xl:gap-10 whitespace-nowrap">
           <a
-            href="#features"
+            href="/#features"
             className="text-sm lg:text-base font-medium text-zinc-700 hover:text-zinc-900 transition-colors duration-200 py-2"
           >
             Features
           </a>
           <a
-            href="#solutions"
+            href="/#solutions"
             className="text-sm lg:text-base font-medium text-zinc-700 hover:text-zinc-900 transition-colors duration-200 py-2"
           >
             Solutions
           </a>
           <a
-            href="#contact"
+            href="/#pricing"
+            className="text-sm lg:text-base font-medium text-zinc-700 hover:text-zinc-900 transition-colors duration-200 py-2"
+          >
+            Pricing
+          </a>
+          <a
+            href="/#contact"
             className="text-sm lg:text-base font-medium text-zinc-700 hover:text-zinc-900 transition-colors duration-200 py-2"
           >
             Contact Us
@@ -40,10 +46,10 @@ export function Navbar() {
             Login
           </a>
           <a
-            href="#demo"
+            href="/auth/signup"
             className="flex items-center rounded-full bg-[#FF5C00] px-5 py-2 text-[15px] font-medium text-white transition-colors duration-200 hover:bg-[#e65300]"
           >
-            Book Demo
+            Get Started
           </a>
         </div>
       </nav>

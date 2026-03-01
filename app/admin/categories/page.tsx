@@ -1,24 +1,34 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Pencil, Trash2, UtensilsCrossed, FolderTree, Loader2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, UtensilsCrossed, Loader2 } from 'lucide-react';
 import { Modal } from '@/features/admin/components/ui/modal';
+import ConfirmationDialog from '@/features/admin/components/ui/confirmation-dialog';
+import { toast } from 'react-toastify';
 import {
-    apiGetCategories,
-    apiCreateCategory,
-    apiUpdateCategory,
-    apiDeleteCategory,
-    Category,
-} from '@/features/admin/services/category-service';
+    useGetCategories,
+    useCreateCategory,
+    useUpdateCategory,
+    useDeleteCategory,
+} from '@/hooks/useCategories';
+import type { Category } from '@/api/category.api';
 
 export default function CategoriesPage() {
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: categoriesResponse, isLoading } = useGetCategories();
+    const createCategoryMutation = useCreateCategory();
+    const updateCategoryMutation = useUpdateCategory();
+    const deleteCategoryMutation = useDeleteCategory();
+
+    const categories = categoriesResponse?.data || [];
+
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
     const [error, setError] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 6;
 
     const [formData, setFormData] = useState({
         name: '',
@@ -27,25 +37,20 @@ export default function CategoriesPage() {
         status: 'Active',
     });
 
-    const fetchCategories = async () => {
-        try {
-            setIsLoading(true);
-            const response = await apiGetCategories();
-            setCategories(response.data);
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to load categories');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchCategories();
-    }, []);
-
     const filteredCategories = categories.filter(cat =>
         cat.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const totalPages = Math.max(1, Math.ceil(filteredCategories.length / itemsPerPage));
+    const paginatedCategories = filteredCategories.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    // Reset to page 1 when search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const totalProducts = categories.reduce((sum, cat) => sum + (cat.productsCount || 0), 0);
 
@@ -73,33 +78,38 @@ export default function CategoriesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSubmitting(true);
         setError('');
 
         try {
             if (editingCategory) {
-                await apiUpdateCategory(editingCategory._id, formData);
+                await updateCategoryMutation.mutateAsync({ id: editingCategory._id, data: formData });
+                toast.success('Category updated successfully');
             } else {
-                await apiCreateCategory(formData);
+                await createCategoryMutation.mutateAsync(formData);
+                toast.success('Category added successfully');
             }
             setIsModalOpen(false);
             resetForm();
-            await fetchCategories();
         } catch (err: any) {
             setError(err.response?.data?.message || 'Something went wrong');
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
-    const handleDelete = async (category: Category) => {
-        if (!confirm(`Delete "${category.name}"? This cannot be undone.`)) return;
+    const handleDelete = (category: Category) => {
+        setDeletingCategory(category);
+        setIsDeleteModalOpen(true);
+    };
 
+    const confirmDelete = async () => {
+        if (!deletingCategory) return;
         try {
-            await apiDeleteCategory(category._id);
-            await fetchCategories();
+            await deleteCategoryMutation.mutateAsync(deletingCategory._id);
+            toast.success('Category deleted successfully');
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to delete category');
+            toast.error(err.response?.data?.message || 'Failed to delete category');
+        } finally {
+            setIsDeleteModalOpen(false);
+            setDeletingCategory(null);
         }
     };
 
@@ -108,58 +118,60 @@ export default function CategoriesPage() {
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div>
-                    <h1 className="text-[26px] font-extrabold text-zinc-800 tracking-tight leading-tight">Categories</h1>
-                    <p className="mt-1 text-[14px] font-normal text-zinc-400">Manage menu categories and hierarchy.</p>
+                    <h1 className="text-2xl font-bold text-zinc-900">Categories</h1>
+                    <p className="text-zinc-600">Manage menu categories and hierarchy.</p>
                 </div>
                 <button
                     onClick={openCreateModal}
-                    className="flex items-center gap-2 rounded-xl bg-[#FF5C00] px-5 py-2.5 text-[13px] font-bold text-white hover:bg-[#e65300] transition-all active:scale-95"
+                    className="flex items-center gap-2 rounded-lg bg-[#FF5C00] px-5 py-2.5 text-[13px] font-bold text-white hover:bg-[#e65300] transition-colors"
                 >
                     <Plus size={16} strokeWidth={2.5} />
                     Add Category
                 </button>
             </div>
 
-            {/* Search + Stats */}
-            <div className="flex items-center gap-3">
-                <div className="relative group flex-1 max-w-lg">
-                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-[#FF5C00] transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Search categories..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-10 w-full rounded-xl bg-white pl-11 pr-4 text-[13px] font-medium text-zinc-800 ring-1 ring-zinc-200/60 outline-none transition-all focus:ring-2 focus:ring-[#FF5C00]/20 placeholder:text-zinc-400"
-                    />
-                </div>
-                <div className="hidden sm:flex items-center gap-2">
-                    <div className="rounded-xl bg-white px-4 py-2.5 ring-1 ring-zinc-200/60">
-                        <span className="text-[12px] font-medium text-zinc-400">Total Categories: </span>
-                        <span className="text-[13px] font-bold text-zinc-800">{categories.length}</span>
+            {/* Categories Card */}
+            <div className="overflow-hidden rounded-xl bg-white ring-1 ring-zinc-200">
+                {/* Search + Stats */}
+                <div className="flex flex-col gap-3 border-b border-zinc-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="relative w-full sm:max-w-sm">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                        <input
+                            type="text"
+                            placeholder="Search categories..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-10 w-full rounded-lg bg-white pl-10 pr-4 text-sm text-zinc-700 border border-zinc-200 outline-none focus:border-zinc-300 placeholder:text-zinc-400"
+                        />
                     </div>
-                    <div className="rounded-xl bg-white px-4 py-2.5 ring-1 ring-zinc-200/60">
-                        <span className="text-[12px] font-medium text-zinc-400">Total Items: </span>
-                        <span className="text-[13px] font-bold text-zinc-800">{totalProducts}</span>
+                    <div className="flex items-center gap-2">
+                        <div className="rounded-lg bg-zinc-50 px-4 py-2.5">
+                            <span className="text-sm text-zinc-500">Total: </span>
+                            <span className="text-sm font-semibold text-zinc-700">{categories.length}</span>
+                        </div>
+                        <div className="rounded-lg bg-zinc-50 px-4 py-2.5">
+                            <span className="text-sm text-zinc-500">Items: </span>
+                            <span className="text-sm font-semibold text-zinc-700">{totalProducts}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Loading State */}
-            {isLoading ? (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="h-6 w-6 animate-spin text-[#FF5C00]" />
-                </div>
-            ) : filteredCategories.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <UtensilsCrossed className="h-10 w-10 text-zinc-300 mb-3" />
-                    <p className="text-[15px] font-semibold text-zinc-500">No categories found</p>
-                    <p className="text-[13px] text-zinc-400 mt-1">Create your first category to get started.</p>
-                </div>
-            ) : (
-                /* Categories Grid — 2-column horizontal cards */
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                    {filteredCategories.map((category) => (
-                        <div key={category._id} className="group rounded-2xl bg-white ring-1 ring-zinc-100 overflow-hidden transition-all hover:ring-zinc-200">
+                {/* Loading State */}
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="h-6 w-6 animate-spin text-[#FF5C00]" />
+                    </div>
+                ) : filteredCategories.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <UtensilsCrossed className="h-10 w-10 text-zinc-300 mb-3" />
+                        <p className="text-sm font-medium text-zinc-500">No categories found</p>
+                        <p className="text-sm text-zinc-400 mt-1">Create your first category to get started.</p>
+                    </div>
+                ) : (
+                    /* Categories Grid — 2-column horizontal cards */
+                    <div className="grid grid-cols-1 gap-4 p-5 lg:grid-cols-2">
+                    {paginatedCategories.map((category) => (
+                        <div key={category._id} className="group rounded-xl bg-zinc-50 ring-1 ring-zinc-100 overflow-hidden transition-all hover:ring-zinc-200">
                             <div className="flex gap-4 p-4">
                                 {/* Image */}
                                 <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-zinc-100">
@@ -181,7 +193,7 @@ export default function CategoriesPage() {
                                     <div className="flex items-start justify-between">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <h3 className="text-[15px] font-bold text-zinc-800">{category.name}</h3>
+                                                <h3 className="text-[17px] font-bold text-zinc-800">{category.name}</h3>
                                                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold
                                                     ${category.status === 'Active'
                                                         ? 'bg-emerald-50 text-emerald-600'
@@ -191,36 +203,32 @@ export default function CategoriesPage() {
                                                     {category.status}
                                                 </span>
                                             </div>
-                                            <p className="text-[12px] font-medium text-zinc-400 mt-0.5">{category.slug}</p>
+                                            <p className="text-[13px] font-medium text-zinc-400 mt-0.5">{category.slug}</p>
                                         </div>
-                                        <div className="flex items-center gap-0.5">
+                                        <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => openEditModal(category)}
-                                                className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-700"
                                             >
                                                 <Pencil size={14} />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(category)}
-                                                className="rounded-lg p-1.5 text-zinc-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-rose-50 hover:text-rose-500"
                                             >
                                                 <Trash2 size={14} />
                                             </button>
                                         </div>
                                     </div>
 
-                                    <p className="mt-1.5 text-[12px] font-normal text-zinc-500 line-clamp-2 leading-relaxed">
+                                    <p className="mt-1.5 text-[13px] font-normal text-zinc-500 line-clamp-2 leading-relaxed">
                                         {category.description || 'No description'}
                                     </p>
 
-                                    <div className="mt-3 flex items-center gap-4">
-                                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500">
+                                    <div className="mt-2 flex items-center gap-4">
+                                        <div className="flex items-center gap-1.5 text-[12px] font-semibold text-zinc-500">
                                             <UtensilsCrossed size={12} className="text-zinc-400" />
                                             {category.productsCount || 0} items
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500">
-                                            <FolderTree size={12} className="text-zinc-400" />
-                                            {category.subcategoriesCount || 0} subcategories
                                         </div>
                                     </div>
                                 </div>
@@ -228,7 +236,48 @@ export default function CategoriesPage() {
                         </div>
                     ))}
                 </div>
-            )}
+                )}
+
+                {/* Pagination */}
+                {filteredCategories.length > 0 && (
+                    <div className="border-t border-zinc-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <span className="text-sm text-zinc-500">
+                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredCategories.length)} of {filteredCategories.length} {filteredCategories.length === 1 ? 'category' : 'categories'}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-2 text-sm font-medium rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 disabled:bg-zinc-50 disabled:text-zinc-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                                            currentPage === page
+                                                ? 'bg-[#FF5C00] text-white border-[#FF5C00]'
+                                                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                                        }`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-2 text-sm font-medium rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 disabled:bg-zinc-50 disabled:text-zinc-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Create / Edit Modal */}
             <Modal
@@ -238,7 +287,7 @@ export default function CategoriesPage() {
             >
                 <form className="space-y-5" onSubmit={handleSubmit}>
                     {error && (
-                        <div className="rounded-xl bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-600">
+                        <div className="rounded-lg bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-600">
                             {error}
                         </div>
                     )}
@@ -251,7 +300,7 @@ export default function CategoriesPage() {
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="e.g. Italian Pasta"
-                                className="w-full rounded-xl bg-zinc-50 px-4 py-2.5 text-[13px] font-medium text-zinc-800 ring-1 ring-zinc-200/60 outline-none focus:ring-2 focus:ring-[#FF5C00]/20"
+                                className="w-full rounded-lg bg-white px-4 py-2.5 text-[13px] font-medium text-zinc-800 border border-zinc-200 outline-none focus:border-zinc-300"
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -259,7 +308,7 @@ export default function CategoriesPage() {
                             <select
                                 value={formData.status}
                                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                className="w-full rounded-xl bg-zinc-50 px-4 py-2.5 text-[13px] font-medium text-zinc-800 ring-1 ring-zinc-200/60 outline-none focus:ring-2 focus:ring-[#FF5C00]/20"
+                                className="w-full rounded-lg bg-white px-4 py-2.5 text-[13px] font-medium text-zinc-800 border border-zinc-200 outline-none focus:border-zinc-300"
                             >
                                 <option value="Active">Active</option>
                                 <option value="Inactive">Inactive</option>
@@ -274,7 +323,7 @@ export default function CategoriesPage() {
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             placeholder="Briefly describe what this category contains..."
-                            className="w-full rounded-xl bg-zinc-50 px-4 py-2.5 text-[13px] font-medium text-zinc-800 ring-1 ring-zinc-200/60 outline-none focus:ring-2 focus:ring-[#FF5C00]/20 resize-none"
+                            className="w-full rounded-lg bg-white px-4 py-2.5 text-[13px] font-medium text-zinc-800 border border-zinc-200 outline-none focus:border-zinc-300 resize-none"
                         />
                     </div>
 
@@ -285,7 +334,7 @@ export default function CategoriesPage() {
                             value={formData.image}
                             onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                             placeholder="https://..."
-                            className="w-full rounded-xl bg-zinc-50 px-4 py-2.5 text-[13px] font-medium text-zinc-800 ring-1 ring-zinc-200/60 outline-none focus:ring-2 focus:ring-[#FF5C00]/20"
+                            className="w-full rounded-lg bg-white px-4 py-2.5 text-[13px] font-medium text-zinc-800 border border-zinc-200 outline-none focus:border-zinc-300"
                         />
                     </div>
 
@@ -293,22 +342,34 @@ export default function CategoriesPage() {
                         <button
                             type="button"
                             onClick={() => { setIsModalOpen(false); resetForm(); }}
-                            className="flex-1 rounded-xl bg-zinc-100 py-2.5 text-[13px] font-bold text-zinc-600 transition-all hover:bg-zinc-200 active:scale-95"
+                            className="flex-1 rounded-lg bg-zinc-100 py-2.5 text-[13px] font-bold text-zinc-600 transition-colors hover:bg-zinc-200"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting}
-                            className="flex-1 rounded-xl bg-[#FF5C00] py-2.5 text-[13px] font-bold text-white transition-all hover:bg-[#e65300] active:scale-95 disabled:opacity-50"
+                            disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+                            className="flex-1 rounded-lg bg-[#FF5C00] py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#e65300] disabled:opacity-50"
                         >
-                            {isSubmitting ? (
+                            {(createCategoryMutation.isPending || updateCategoryMutation.isPending) ? (
                                 <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                             ) : editingCategory ? 'Update Category' : 'Save Category'}
                         </button>
                     </div>
                 </form>
             </Modal>
+
+            <ConfirmationDialog
+                isOpen={isDeleteModalOpen}
+                onClose={() => { setIsDeleteModalOpen(false); setDeletingCategory(null); }}
+                onConfirm={confirmDelete}
+                title="Delete Category"
+                message={`Delete "${deletingCategory?.name}"? This will also delete all items in this category.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                isLoading={deleteCategoryMutation.isPending}
+            />
         </div>
     );
 }

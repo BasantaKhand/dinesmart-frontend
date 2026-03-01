@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     Clock,
     ChefHat,
@@ -13,7 +13,7 @@ import {
     Filter,
     MoveRight
 } from 'lucide-react';
-import api from '@/lib/axios';
+import { useGetOrders, useUpdateItemStatus } from '@/hooks/useOrders';
 
 interface OrderItem {
     _id: string;
@@ -36,31 +36,23 @@ interface Order {
 }
 
 export default function OrdersView() {
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'ALL' | 'READY' | 'PREPARING'>('ALL');
 
-    const fetchOrders = async () => {
-        try {
-            const res = await api.get('/orders?status=PENDING,COOKING,SERVED');
-            setOrders(res.data.data);
-        } catch (err) {
-            console.error("Failed to fetch orders", err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const { data: ordersResponse, isLoading, refetch: refetchOrders } = useGetOrders({ status: 'PENDING,COOKING,SERVED' });
+    const updateItemStatusMutation = useUpdateItemStatus();
 
-    useEffect(() => {
-        fetchOrders();
-        const interval = setInterval(fetchOrders, 10000); // Poll every 10s
+    const orders = (ordersResponse?.data || []) as Order[];
+
+    // Poll every 10s
+    React.useEffect(() => {
+        const interval = setInterval(() => refetchOrders(), 10000);
         return () => clearInterval(interval);
-    }, []);
+    }, [refetchOrders]);
 
     const updateItemStatus = async (orderId: string, itemId: string, newStatus: string) => {
         try {
-            await api.put(`/orders/${orderId}/items/${itemId}/status`, { status: newStatus });
-            fetchOrders(); // Refresh
+            await updateItemStatusMutation.mutateAsync({ orderId, itemId, data: { status: newStatus } });
+            refetchOrders();
         } catch (err) {
             console.error("Failed to update item status", err);
         }
@@ -149,7 +141,7 @@ export default function OrdersView() {
                                     {item.status === 'READY' ? (
                                         <button
                                             onClick={() => updateItemStatus(order._id, item._id, 'SERVED')}
-                                            className="px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold rounded-md hover:bg-emerald-600 transition-all active:scale-95 flex items-center gap-1.5"
+                                            className="px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold rounded-md hover:bg-emerald-600 transition-colors flex items-center gap-1.5"
                                         >
                                             <Utensils size={10} />
                                             SERVE

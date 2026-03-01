@@ -27,7 +27,7 @@ export const apiGetTables = async (): Promise<TablesResponse> => {
 };
 
 export const apiCreateTable = async (data: {
-    number: string;
+    number?: string;
     capacity: number;
     status?: string;
 }): Promise<TableResponse> => {

@@ -1,7 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, apiGetMe, apiLogin, apiLogout } from '@/features/auth/services/auth-service';
+import { toast } from 'react-toastify';
+import { loginApi, logoutApi, getMeApi, updateProfileApi } from '@/api/auth.api';
+import type { User, UpdateProfileData } from '@/api/auth.api';
 import { setCookie, deleteCookie, getCookie } from 'cookies-next';
 import { useRouter } from 'next/navigation';
 
@@ -10,6 +12,8 @@ interface AuthContextType {
     isLoading: boolean;
     login: (credentials: any) => Promise<void>;
     logout: () => Promise<void>;
+    updateProfile: (data: UpdateProfileData) => Promise<void>;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,14 +23,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
+    const refreshUser = async () => {
+        try {
+            const response = await getMeApi();
+            if (response.data.success) {
+                setUser(response.data.data.user);
+            }
+        } catch (error) {
+            console.error('Failed to refresh user', error);
+        }
+    };
+
     useEffect(() => {
         const checkAuth = async () => {
             const token = getCookie('token');
             if (token) {
                 try {
-                    const response = await apiGetMe();
-                    if (response.success) {
-                        setUser(response.data.user);
+                    const response = await getMeApi();
+                    if (response.data.success) {
+                        setUser(response.data.data.user);
                     }
                 } catch (error) {
                     console.error('Auth verification failed', error);
@@ -40,16 +55,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const login = async (credentials: any) => {
         try {
-            const response = await apiLogin(credentials);
-            if (response.success) {
-                const loggedInUser = response.data.user;
+            const response = await loginApi(credentials);
+            if (response.data.success) {
+                const loggedInUser = response.data.data.user;
                 setUser(loggedInUser);
-                setCookie('token', response.data.token, { maxAge: 60 * 60 * 24 }); // 1 day
+                setCookie('token', response.data.data.token, { maxAge: 60 * 60 * 24 }); // 1 day
+                toast.success(`Welcome back, ${loggedInUser.name}!`);
 
                 if (loggedInUser.role === 'WAITER') {
                     router.push('/waiter');
                 } else if (loggedInUser.role === 'CASHIER') {
                     router.push('/cashier');
+                } else if (loggedInUser.role === 'SUPERADMIN') {
+                    router.push('/superadmin');
                 } else {
                     router.push('/admin');
                 }
@@ -61,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = async () => {
         try {
-            await apiLogout();
+            await logoutApi();
         } catch (error) {
             console.error('Logout failed', error);
         } finally {
@@ -71,8 +89,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const updateProfile = async (data: UpdateProfileData) => {
+        const response = await updateProfileApi(data);
+        if (response.data.success) {
+            setUser(response.data.data.user);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, login, logout, updateProfile, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

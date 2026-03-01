@@ -22,7 +22,7 @@ const variants = {
 
 export const KPICard: React.FC<KPICardProps> = ({ title, value, icon: Icon, trend, variant = 'orange' }) => {
     return (
-        <div className="group relative overflow-hidden rounded-2xl bg-white px-6 py-5 ring-1 ring-zinc-100 transition-all hover:ring-zinc-200 shadow-none">
+        <div className="group relative overflow-hidden rounded-2xl bg-white px-6 py-5 ring-1 ring-zinc-300 transition-all shadow-none">
             <div className="flex items-start justify-between">
                 <div className="flex-1">
                     <p className="text-[13px] font-medium text-zinc-400 leading-none">{title}</p>

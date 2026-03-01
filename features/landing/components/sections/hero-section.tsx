@@ -19,10 +19,10 @@ export function HeroSection() {
 
           <div className="flex flex-wrap gap-3">
             <a
-              href="#demo"
+              href="/auth/signup"
               className="rounded-full bg-[#FF5C00] px-5 py-2 text-[15px] font-medium text-white transition-colors duration-200 hover:bg-[#e65300]"
             >
-              Start Free Trial
+              Get Started
             </a>
             <a
               href="#features"

@@ -15,6 +15,8 @@ export default function Home() {
         router.replace("/waiter");
       } else if (user.role === 'CASHIER') {
         router.replace("/cashier");
+      } else if (user.role === 'SUPERADMIN') {
+        router.replace("/superadmin");
       } else {
         router.replace("/admin");
       }

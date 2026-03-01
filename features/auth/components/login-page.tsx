@@ -2,26 +2,25 @@
 
 import { useState } from "react"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { toast } from "react-toastify"
 import { useAuth } from "@/providers/auth-provider"
 
 export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
     setIsSubmitting(true)
 
     try {
       await login({ email, password })
     } catch (err: any) {
-      setError(err)
+      toast.error(err || 'Invalid credentials')
     } finally {
       setIsSubmitting(false)
     }
@@ -51,12 +50,6 @@ export function LoginPage() {
             </div>
 
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-              {error && (
-                <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 ring-1 ring-red-200">
-                  {error}
-                </div>
-              )}
-
               {/* Email */}
               <div>
                 <label className="text-sm font-medium text-zinc-700">
@@ -116,7 +109,7 @@ export function LoginPage() {
                 </div>
 
                 <a
-                  href="/forgot-password"
+                  href="/auth/forgot-password"
                   className="text-sm font-medium text-[#FF5C00] hover:underline underline-offset-4"
                 >
                   Forgot Password?

@@ -3,11 +3,14 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
-import { Bell } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import ConfirmationDialog from '@/features/admin/components/ui/confirmation-dialog';
+import { NotificationDropdown } from '@/features/notifications/components/notification-dropdown';
 
 export const Topbar: React.FC = () => {
     const pathname = usePathname();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const [showLogoutConfirmation, setShowLogoutConfirmation] = React.useState(false);
 
     const getBreadcrumb = () => {
         const segments = pathname.split('/').filter(Boolean);
@@ -28,10 +31,7 @@ export const Topbar: React.FC = () => {
 
             {/* Right: Notification & User Info */}
             <div className="flex items-center gap-2 md:gap-3">
-                <button className="h-9 w-9 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-400 border border-zinc-100 hover:text-zinc-900 transition-colors relative">
-                    <Bell size={18} />
-                    <div className="absolute top-2 right-2 h-2 w-2 bg-[#FF5C00] border-2 border-white rounded-full" />
-                </button>
+                <NotificationDropdown />
 
                 <div className="flex items-center gap-3 pl-3 border-l border-zinc-100">
                     <div className="text-right hidden md:block">
@@ -41,8 +41,27 @@ export const Topbar: React.FC = () => {
                     <div className="h-9 w-9 rounded-lg bg-[#FF5C00] text-white flex items-center justify-center font-bold text-sm">
                         {user?.name?.charAt(0)?.toUpperCase() || 'A'}
                     </div>
+                    <button
+                        onClick={() => setShowLogoutConfirmation(true)}
+                        className="h-9 w-9 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-500 border border-zinc-100 hover:text-rose-500 hover:border-rose-200 transition-colors"
+                        aria-label="Logout"
+                        title="Logout"
+                    >
+                        <LogOut size={17} />
+                    </button>
                 </div>
             </div>
+
+            <ConfirmationDialog
+                isOpen={showLogoutConfirmation}
+                onClose={() => setShowLogoutConfirmation(false)}
+                onConfirm={logout}
+                title="Logout"
+                message="Are you sure you want to logout? You will need to sign in again to access your account."
+                confirmText="Logout"
+                cancelText="Cancel"
+                variant="warning"
+            />
         </header>
     );
 };

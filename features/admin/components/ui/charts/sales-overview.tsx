@@ -13,7 +13,7 @@ import {
     AreaChart
 } from 'recharts';
 
-const data = [
+const fallbackData = [
     { name: '1 Feb', sales: 4000 },
     { name: '5 Feb', sales: 3000 },
     { name: '10 Feb', sales: 2000 },
@@ -23,19 +23,29 @@ const data = [
     { name: '28 Feb', sales: 3490 },
 ];
 
-export const SalesOverview: React.FC = () => {
+type SalesOverviewPoint = { name: string; sales: number };
+
+interface SalesOverviewProps {
+    data?: SalesOverviewPoint[];
+    isLoading?: boolean;
+}
+
+export const SalesOverview: React.FC<SalesOverviewProps> = ({ data, isLoading }) => {
     const [isMounted, setIsMounted] = React.useState(false);
 
     React.useEffect(() => {
         setIsMounted(true);
     }, []);
 
-    if (!isMounted) return <div className="h-[300px] w-full bg-zinc-50/50 animate-pulse rounded-lg" />;
+    const chartData = data && data.length > 0 ? data : fallbackData;
+    const showLoading = !isMounted || isLoading;
+
+    if (showLoading) return <div className="h-[300px] w-full rounded-lg border border-zinc-300 bg-zinc-50/50 p-4 animate-pulse" />;
 
     return (
-        <div className="h-[300px] w-full">
+        <div className="h-[300px] w-full rounded-lg border border-zinc-300 p-4">
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data}>
+                <AreaChart data={chartData}>
                     <defs>
                         <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#FF5C00" stopOpacity={0.1} />
@@ -62,6 +72,7 @@ export const SalesOverview: React.FC = () => {
                             border: '1px solid #F1F1F1',
                             boxShadow: 'none'
                         }}
+                        formatter={(value: any) => [`Rs. ${Math.round(value as number).toLocaleString()}`, 'Sales']}
                     />
                     <Area
                         type="monotone"

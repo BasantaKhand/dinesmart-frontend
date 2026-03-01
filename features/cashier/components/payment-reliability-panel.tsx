@@ -3,68 +3,46 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, RotateCw, CheckCircle } from 'lucide-react';
 import {
-  apiGetQueueStatus,
-  apiGetFailedPayments,
-  apiManuallyOverridePayment,
-  apiRetryAllFailedPayments,
-  PaymentQueueStatus,
-  PaymentQueueItem,
-} from '@/features/admin/services/payment-queue-service';
+  useGetQueueStatus,
+  useGetFailedPayments,
+  useManuallyOverridePayment,
+  useRetryAllFailedPayments,
+} from '@/hooks/usePaymentQueue';
+import type { PaymentQueueStatus, PaymentQueueItem } from '@/api/payment-queue.api';
 
 export default function PaymentReliabilityPanel() {
-  const [status, setStatus] = useState<PaymentQueueStatus>({ pending: 0, confirmed: 0, failed: 0 });
-  const [failedPayments, setFailedPayments] = useState<PaymentQueueItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [retrying, setRetrying] = useState(false);
+  const { data: statusData, refetch: refetchStatus } = useGetQueueStatus();
+  const { data: failedData, refetch: refetchFailed } = useGetFailedPayments(10, 0);
+  const manualOverrideMutation = useManuallyOverridePayment();
+  const retryAllMutation = useRetryAllFailedPayments();
+
+  const status: PaymentQueueStatus = statusData || { pending: 0, confirmed: 0, failed: 0 };
+  const failedPayments: PaymentQueueItem[] = failedData?.payments || [];
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [overridePaymentId, setOverridePaymentId] = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
 
-  // Load status and failed payments on mount
+  // Poll every 30 seconds
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const [statusData, failedData] = await Promise.all([
-          apiGetQueueStatus(),
-          apiGetFailedPayments(10, 0),
-        ]);
-        setStatus(statusData);
-        setFailedPayments(failedData.payments);
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to load payment status');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-    const interval = setInterval(loadData, 30000); // Refresh every 30s
+    const interval = setInterval(() => {
+      refetchStatus();
+      refetchFailed();
+    }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refetchStatus, refetchFailed]);
 
   const handleRetryAll = async () => {
-    setRetrying(true);
     setError('');
     setSuccess('');
 
     try {
-      const results = await apiRetryAllFailedPayments();
+      const results = await retryAllMutation.mutateAsync();
       setSuccess(
         `Retry complete: ${results.confirmed} confirmed, ${results.stillFailed} still failed`
       );
-      // Reload data
-      const [statusData, failedData] = await Promise.all([
-        apiGetQueueStatus(),
-        apiGetFailedPayments(10, 0),
-      ]);
-      setStatus(statusData);
-      setFailedPayments(failedData.payments);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to retry payments');
-    } finally {
-      setRetrying(false);
     }
   };
 
@@ -78,18 +56,10 @@ export default function PaymentReliabilityPanel() {
     setSuccess('');
 
     try {
-      await apiManuallyOverridePayment(paymentId, overrideReason);
+      await manualOverrideMutation.mutateAsync({ paymentId, reason: overrideReason });
       setSuccess('Payment manually approved');
       setOverridePaymentId(null);
       setOverrideReason('');
-
-      // Reload data
-      const [statusData, failedData] = await Promise.all([
-        apiGetQueueStatus(),
-        apiGetFailedPayments(10, 0),
-      ]);
-      setStatus(statusData);
-      setFailedPayments(failedData.payments);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to override payment');
     }
@@ -135,11 +105,11 @@ export default function PaymentReliabilityPanel() {
         <div className="mb-6">
           <button
             onClick={handleRetryAll}
-            disabled={retrying}
+            disabled={retryAllMutation.isPending}
             className="w-full px-4 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:bg-zinc-300 font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
           >
             <RotateCw size={16} />
-            {retrying ? 'Retrying...' : 'Retry All Failed Payments'}
+            {retryAllMutation.isPending ? 'Retrying...' : 'Retry All Failed Payments'}
           </button>
         </div>
       )}
@@ -219,7 +189,7 @@ export default function PaymentReliabilityPanel() {
         </div>
       )}
 
-      {failedPayments.length === 0 && status.failed === 0 && !loading && (
+      {failedPayments.length === 0 && status.failed === 0 && (
         <div className="text-center py-6">
           <CheckCircle size={32} className="mx-auto text-green-600 mb-2" />
           <p className="text-sm font-semibold text-gray-600">All payments verified</p>
