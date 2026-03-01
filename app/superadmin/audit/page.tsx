@@ -23,8 +23,8 @@ export default function AuditLogsPage() {
     const transactions = auditResponse?.data || [];
     const totalPages = auditResponse?.pagination?.totalPages || 1;
 
-    const filteredTransactions = transactions.filter(tx => {
-        const matchesSearch = 
+    const filteredTransactions = transactions.filter((tx: any) => {
+        const matchesSearch =
             tx.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (typeof tx.restaurantId === 'object' && tx.restaurantId?.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -164,7 +164,7 @@ export default function AuditLogsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
-                                {filteredTransactions.map((transaction) => (
+                                {filteredTransactions.map((transaction: any) => (
                                     <tr key={transaction._id} className="hover:bg-zinc-50">
                                         <td className="px-4 py-4">
                                             <p className="text-sm text-zinc-600">{formatDate(transaction.createdAt || '')}</p>
@@ -173,8 +173,8 @@ export default function AuditLogsPage() {
                                             <div className="flex items-center gap-2">
                                                 <Building2 className="h-4 w-4 text-zinc-400" />
                                                 <span className="text-sm font-medium text-zinc-900">
-                                                    {typeof transaction.restaurantId === 'object' 
-                                                        ? transaction.restaurantId?.name 
+                                                    {typeof transaction.restaurantId === 'object'
+                                                        ? transaction.restaurantId?.name
                                                         : '—'}
                                                 </span>
                                             </div>
@@ -183,7 +183,7 @@ export default function AuditLogsPage() {
                                             {getTypeBadge(transaction.type)}
                                         </td>
                                         <td className="px-4 py-4 text-sm text-zinc-600">
-                                            {transaction.orderNumber || 
+                                            {transaction.orderNumber ||
                                                 (typeof transaction.orderId === 'object' ? transaction.orderId?.orderNumber : '—')}
                                         </td>
                                         <td className="px-4 py-4">
@@ -197,18 +197,17 @@ export default function AuditLogsPage() {
                                             <div className="flex items-center gap-2">
                                                 <User className="h-4 w-4 text-zinc-400" />
                                                 <span className="text-sm text-zinc-600">
-                                                    {typeof transaction.cashierId === 'object' 
-                                                        ? transaction.cashierId?.name || transaction.cashierId?.email 
+                                                    {typeof transaction.cashierId === 'object'
+                                                        ? transaction.cashierId?.name || transaction.cashierId?.email
                                                         : '—'}
                                                 </span>
                                             </div>
                                         </td>
                                         <td className="px-4 py-4 text-right">
-                                            <span className={`text-sm font-semibold ${
-                                                transaction.type === 'MANUAL_ADJUSTMENT' && transaction.amount < 0 
-                                                    ? 'text-red-600' 
+                                            <span className={`text-sm font-semibold ${transaction.type === 'MANUAL_ADJUSTMENT' && transaction.amount < 0
+                                                    ? 'text-red-600'
                                                     : 'text-emerald-600'
-                                            }`}>
+                                                }`}>
                                                 {transaction.amount < 0 ? '-' : '+'}
                                                 {formatCurrency(transaction.amount)}
                                             </span>
