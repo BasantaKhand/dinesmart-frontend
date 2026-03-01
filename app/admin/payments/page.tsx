@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { apiGetPaymentSettings, apiUpdatePaymentSettings, PaymentSettings } from '@/features/admin/services/restaurant-service';
+import { useGetPaymentSettings, useUpdatePaymentSettings } from '@/hooks/useRestaurant';
+import type { PaymentSettings } from '@/api/restaurant.api';
 
 const defaultSettings: PaymentSettings = {
     provider: 'MANUAL',
@@ -12,40 +13,29 @@ const defaultSettings: PaymentSettings = {
 };
 
 export default function PaymentSettingsPage() {
+    const { data: paymentData, isLoading } = useGetPaymentSettings();
+    const updatePaymentSettingsMutation = useUpdatePaymentSettings();
+
     const [settings, setSettings] = useState<PaymentSettings>(defaultSettings);
     const [restaurantName, setRestaurantName] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        const loadSettings = async () => {
-            try {
-                const res = await apiGetPaymentSettings();
-                setRestaurantName(res.data.restaurantName || '');
-                setSettings({ ...defaultSettings, ...(res.data.paymentSettings || {}) });
-            } catch (error: any) {
-                setMessage(error?.response?.data?.message || 'Failed to load payment settings.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        loadSettings();
-    }, []);
+        if (paymentData) {
+            setRestaurantName(paymentData.data.restaurantName || '');
+            setSettings({ ...defaultSettings, ...(paymentData.data.paymentSettings || {}) });
+        }
+    }, [paymentData]);
 
     const handleSave = async () => {
-        setIsSaving(true);
         setMessage(null);
         try {
-            const res = await apiUpdatePaymentSettings(settings);
+            const res = await updatePaymentSettingsMutation.mutateAsync(settings);
             setRestaurantName(res.data.restaurantName || restaurantName);
             setSettings({ ...defaultSettings, ...(res.data.paymentSettings || {}) });
             setMessage('Payment settings updated successfully.');
         } catch (error: any) {
             setMessage(error?.response?.data?.message || 'Failed to update payment settings.');
-        } finally {
-            setIsSaving(false);
         }
     };
 
@@ -128,10 +118,10 @@ export default function PaymentSettingsPage() {
 
                 <button
                     onClick={handleSave}
-                    disabled={isSaving || isLoading}
+                    disabled={updatePaymentSettingsMutation.isPending || isLoading}
                     className="h-11 w-full rounded-lg bg-[#FF5C00] text-white text-sm font-bold hover:bg-[#e65300] disabled:opacity-60"
                 >
-                    {isSaving ? 'Saving...' : 'Save Payment Settings'}
+                    {updatePaymentSettingsMutation.isPending ? 'Saving...' : 'Save Payment Settings'}
                 </button>
             </div>
         </div>
