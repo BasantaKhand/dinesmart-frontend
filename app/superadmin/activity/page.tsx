@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from 'react';
-import { 
-    Activity, 
-    Search, 
-    Loader2, 
-    AlertCircle, 
-    Info, 
+import {
+    Activity,
+    Search,
+    Loader2,
+    AlertCircle,
+    Info,
     AlertTriangle,
     User,
     Building2,
@@ -33,8 +33,8 @@ export default function SystemActivityPage() {
     const activities = activityResponse?.data || [];
     const totalPages = activityResponse?.pagination?.totalPages || 1;
 
-    const filteredActivities = activities.filter(activity => {
-        const matchesSearch = 
+    const filteredActivities = activities.filter((activity: any) => {
+        const matchesSearch =
             activity.message?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             activity.userEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             activity.restaurantName?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -60,7 +60,7 @@ export default function SystemActivityPage() {
     const getTypeBadge = (type: string) => {
         let bg = 'bg-zinc-100';
         let text = 'text-zinc-600';
-        
+
         if (type.includes('LOGIN') || type.includes('LOGOUT') || type.includes('PASSWORD')) {
             bg = 'bg-purple-100'; text = 'text-purple-800';
         } else if (type.includes('RESTAURANT')) {
@@ -194,7 +194,7 @@ export default function SystemActivityPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
-                                {filteredActivities.map((activity) => (
+                                {filteredActivities.map((activity: any) => (
                                     <tr key={activity._id} className="hover:bg-zinc-50">
                                         <td className="px-4 py-4">
                                             {getTypeBadge(activity.type)}
