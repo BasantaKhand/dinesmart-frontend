@@ -38,3 +38,9 @@ export const getMeApi = () =>
 
 export const updateProfileApi = (data: UpdateProfileData) =>
     api.put('/auth/profile', data);
+
+export const forgotPasswordApi = (email: string) =>
+    api.post('/auth/forgot-password', { email });
+
+export const resetPasswordApi = (data: { email: string; token: string; newPassword: string }) =>
+    api.post('/auth/reset-password', data);
