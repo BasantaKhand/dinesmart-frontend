@@ -10,7 +10,7 @@ import {
     Legend
 } from 'recharts';
 
-const data = [
+const fallbackData = [
     { name: 'Main Course', value: 400 },
     { name: 'Beverages', value: 300 },
     { name: 'Desserts', value: 200 },
@@ -19,21 +19,31 @@ const data = [
 
 const COLORS = ['#FF5C00', '#007BFF', '#f59e0b', '#8A2BE2'];
 
-export const CategorySales: React.FC = () => {
+type CategorySalesPoint = { name: string; value: number };
+
+interface CategorySalesProps {
+    data?: CategorySalesPoint[];
+    isLoading?: boolean;
+}
+
+export const CategorySales: React.FC<CategorySalesProps> = ({ data, isLoading }) => {
     const [isMounted, setIsMounted] = React.useState(false);
 
     React.useEffect(() => {
         setIsMounted(true);
     }, []);
 
-    if (!isMounted) return <div className="h-[300px] w-full bg-zinc-50/50 animate-pulse rounded-lg" />;
+    const chartData = data && data.length > 0 ? data : fallbackData;
+    const showLoading = !isMounted || isLoading;
+
+    if (showLoading) return <div className="h-[300px] w-full rounded-lg border border-zinc-300 bg-zinc-50/50 p-4 animate-pulse" />;
 
     return (
-        <div className="h-[300px] w-full">
+        <div className="h-[300px] w-full rounded-lg border border-zinc-300 p-4">
             <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                     <Pie
-                        data={data}
+                        data={chartData}
                         cx="50%"
                         cy="50%"
                         innerRadius={60}
@@ -41,7 +51,7 @@ export const CategorySales: React.FC = () => {
                         paddingAngle={5}
                         dataKey="value"
                     >
-                        {data.map((entry, index) => (
+                        {chartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                     </Pie>
