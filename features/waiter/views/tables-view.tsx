@@ -9,7 +9,7 @@ import {
     Eraser,
     Bookmark
 } from 'lucide-react';
-import { Table } from '@/features/admin/services/table-service';
+import type { Table } from '@/api/table.api';
 
 interface TablesViewProps {
     tables: Table[];
@@ -84,7 +84,7 @@ export default function TablesView({ tables, onSelectTable }: TablesViewProps) {
                         <div
                             key={table._id}
                             onClick={() => onSelectTable(table)}
-                            className={`relative bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer group active:scale-95`}
+                            className={`relative bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer group`}
                         >
                             {/* Table Number Badge */}
                             <div className={`absolute -top-4 -left-4 h-16 w-16 rounded-3xl flex items-center justify-center text-white font-black text-2xl shadow-xl transition-transform group-hover:scale-110 z-10
