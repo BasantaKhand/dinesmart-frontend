@@ -12,8 +12,8 @@ import {
     ArrowLeft,
     Filter
 } from 'lucide-react';
-import { Category } from '@/features/admin/services/category-service';
-import { MenuItem } from '@/features/admin/services/menu-item-service';
+import type { Category } from '@/api/category.api';
+import type { MenuItem } from '@/api/menu-item.api';
 
 interface MenuViewProps {
     categories: Category[];
@@ -249,12 +249,12 @@ export default function MenuView({ categories, menuItems, onBack }: MenuViewProp
                     </div>
 
                     <div className="flex gap-4">
-                        <button className="flex-1 h-16 bg-zinc-100 rounded-2xl text-[15px] font-black text-zinc-600 hover:bg-zinc-200 transition-all active:scale-95 uppercase tracking-tight">
+                        <button className="flex-1 h-16 bg-zinc-100 rounded-2xl text-[15px] font-black text-zinc-600 hover:bg-zinc-200 transition-colors uppercase tracking-tight">
                             Save Note
                         </button>
                         <button
                             disabled={cart.length === 0}
-                            className="flex-[2] h-16 bg-[#FF5C00] rounded-2xl text-[15px] font-black text-white shadow-xl shadow-orange-500/20 hover:bg-[#e65300] transition-all active:scale-98 disabled:opacity-50 disabled:scale-100 disabled:shadow-none flex items-center justify-center gap-3 uppercase tracking-tight"
+                            className="flex-[2] h-16 bg-[#FF5C00] rounded-2xl text-[15px] font-black text-white shadow-xl shadow-orange-500/20 hover:bg-[#e65300] transition-colors disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-3 uppercase tracking-tight"
                         >
                             <ChefHat size={20} />
                             Send to Kitchen
