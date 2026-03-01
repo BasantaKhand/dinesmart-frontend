@@ -26,12 +26,13 @@ export interface Order {
     tax: number;
     serviceCharge: number;
     total: number;
-    status: 'PENDING' | 'COOKING' | 'SERVED' | 'COMPLETED' | 'CANCELLED';
+    status: 'PENDING' | 'COOKING' | 'COOKED' | 'SERVED' | 'COMPLETED' | 'CANCELLED';
     paymentStatus: 'PENDING' | 'PAID' | 'PARTIAL';
     paymentMethod: 'CASH' | 'CARD' | 'QR' | 'CREDIT';
     paymentProvider?: 'ESEWA' | 'STRIPE' | 'MANUAL';
     paymentReference?: string;
     orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+    notes?: string;
     createdAt: string;
     updatedAt: string;
 }
