@@ -1,39 +1,37 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiOpenDrawer, apiCloseDrawer, apiGetDrawerStatus, CashDrawer } from '@/features/admin/services/cash-drawer-service';
+import { Banknote, Lock, Unlock, Loader2 } from 'lucide-react';
+import { Modal } from '@/features/admin/components/ui/modal';
+import { useGetDrawerStatus, useOpenDrawer, useCloseDrawer } from '@/hooks/useCashDrawer';
+import type { CashDrawer } from '@/api/cash-drawer.api';
 
 export default function CashDrawerPanel() {
-  const [drawer, setDrawer] = useState<CashDrawer | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { data: drawerData, isLoading: drawerLoading, refetch: refetchDrawer } = useGetDrawerStatus();
+  const openDrawerMutation = useOpenDrawer();
+  const closeDrawerMutation = useCloseDrawer();
+
+  const drawer = drawerData || null;
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Modal states
+  const [showOpenModal, setShowOpenModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   // Form state for opening
   const [openingAmount, setOpeningAmount] = useState('0');
   const [openingNotes, setOpeningNotes] = useState('');
-  const [showOpenForm, setShowOpenForm] = useState(false);
 
   // Form state for closing
   const [closingAmount, setClosingAmount] = useState('');
   const [closingNotes, setClosingNotes] = useState('');
-  const [showCloseForm, setShowCloseForm] = useState(false);
 
-  // Load drawer status on mount and periodically
+  // Poll every 30s
   useEffect(() => {
-    const loadStatus = async () => {
-      try {
-        const status = await apiGetDrawerStatus();
-        setDrawer(status);
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to load drawer status');
-      }
-    };
-
-    loadStatus();
-    const interval = setInterval(loadStatus, 30000); // Refresh every 30s
+    const interval = setInterval(() => refetchDrawer(), 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refetchDrawer]);
 
   const handleOpenDrawer = async () => {
     if (!openingAmount || isNaN(parseFloat(openingAmount))) {
@@ -41,21 +39,17 @@ export default function CashDrawerPanel() {
       return;
     }
 
-    setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      const result = await apiOpenDrawer(parseFloat(openingAmount), openingNotes);
-      setDrawer(result);
+      await openDrawerMutation.mutateAsync({ openingAmount: parseFloat(openingAmount), notes: openingNotes });
       setSuccess('Cash drawer opened successfully');
-      setShowOpenForm(false);
+      setShowOpenModal(false);
       setOpeningAmount('0');
       setOpeningNotes('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to open drawer');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -65,241 +59,235 @@ export default function CashDrawerPanel() {
       return;
     }
 
-    setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      const result = await apiCloseDrawer(parseFloat(closingAmount), closingNotes);
-      setDrawer(result);
+      await closeDrawerMutation.mutateAsync({ closingAmount: parseFloat(closingAmount), notes: closingNotes });
       setSuccess('Cash drawer closed successfully');
-      setShowCloseForm(false);
+      setShowCloseModal(false);
       setClosingAmount('');
       setClosingNotes('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to close drawer');
-    } finally {
-      setLoading(false);
     }
   };
 
   const isDrawerOpen = drawer?.status === 'OPEN';
-  const varianceColor =
-    drawer?.variance === undefined
-      ? 'text-gray-500'
-      : drawer.variance > 0
-        ? 'text-green-600'
-        : drawer.variance < 0
-          ? 'text-red-600'
-          : 'text-gray-600';
+  const variance = closingAmount ? parseFloat(closingAmount) - (drawer?.expectedAmount || 0) : 0;
+  const varianceColor = variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-zinc-600';
 
   return (
-    <div className="bg-white rounded-2xl border border-zinc-200 p-4">
-      <h3 className="text-sm font-semibold mb-3 text-zinc-900">Cash Drawer Management</h3>
-
-      {/* Status Messages */}
-      {error && (
-        <div className="mb-3 p-2 bg-red-50 border border-red-200 text-red-700 rounded-md text-xs">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="mb-3 p-2 bg-green-50 border border-green-200 text-green-700 rounded-md text-xs">
-          {success}
-        </div>
-      )}
-
-      {/* Current Status */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-md border border-gray-200">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-medium text-gray-700">Status</span>
+    <>
+      <div className="bg-white rounded-xl ring-1 ring-zinc-200 overflow-hidden">
+        <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-[#8A2BE2] flex items-center justify-center">
+              <Banknote size={20} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-zinc-900">Cash Drawer</h3>
+              <p className="text-sm font-medium text-zinc-500">Daily cash operations</p>
+            </div>
+          </div>
           <span
-            className={`px-3 py-1 text-sm font-semibold rounded-full ${isDrawerOpen ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+            className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-lg ${isDrawerOpen ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200' : 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'}`}
           >
             {isDrawerOpen ? 'OPEN' : 'CLOSED'}
           </span>
         </div>
 
-        {isDrawerOpen ? (
-          <>
-            <div className="grid grid-cols-3 gap-4 text-sm mb-4">
-              <div className="rounded-xl bg-blue-50 border border-blue-100 p-3">
-                <div className="h-8 w-8 rounded-lg bg-blue-500 flex items-center justify-center mb-2">
-                  <span className="text-white text-xs font-bold">₨</span>
-                </div>
-                <p className="text-xs text-zinc-500 mb-1">Opening</p>
-                <p className="text-base font-bold text-zinc-900">₨ {drawer?.openingAmount?.toFixed(2)}</p>
-              </div>
-              <div className="rounded-xl bg-purple-50 border border-purple-100 p-3">
-                <div className="h-8 w-8 rounded-lg bg-purple-500 flex items-center justify-center mb-2">
-                  <span className="text-white text-xs font-bold">₨</span>
-                </div>
-                <p className="text-xs text-zinc-500 mb-1">Expected</p>
-                <p className="text-base font-bold text-zinc-900">₨ {drawer?.expectedAmount?.toFixed(2) || '0.00'}</p>
-              </div>
-              <div className="rounded-xl bg-orange-50 border border-orange-100 p-3">
-                <div className="h-8 w-8 rounded-lg bg-[#FF5C00] flex items-center justify-center mb-2">
-                  <span className="text-white text-[10px] font-bold">⏱</span>
-                </div>
-                <p className="text-xs text-zinc-500 mb-1">Opened</p>
-                <p className="text-xs font-semibold text-zinc-900">
-                  {drawer?.openedAt ? new Date(drawer.openedAt).toLocaleTimeString() : '-'}
-                </p>
-              </div>
+        <div className="p-5">
+          {error && (
+            <div className="mb-4 p-3 bg-rose-50 ring-1 ring-rose-200 text-rose-700 rounded-lg text-sm font-medium">
+              {error}
             </div>
-          </>
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-zinc-500 text-sm mb-3">Drawer is closed. Open it to start accepting cash.</p>
-          </div>
-        )}
+          )}
+          {success && (
+            <div className="mb-4 p-3 bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700 rounded-lg text-sm font-medium">
+              {success}
+            </div>
+          )}
+
+          {isDrawerOpen ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-3 bg-zinc-50 rounded-lg ring-1 ring-zinc-100">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Opening</p>
+                  <p className="text-lg font-bold text-zinc-900 mt-1">₨ {drawer?.openingAmount?.toLocaleString() || 0}</p>
+                </div>
+                <div className="text-center p-3 bg-zinc-50 rounded-lg ring-1 ring-zinc-100">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Expected</p>
+                  <p className="text-lg font-bold text-zinc-900 mt-1">₨ {drawer?.expectedAmount?.toLocaleString() || 0}</p>
+                </div>
+                <div className="text-center p-3 bg-zinc-50 rounded-lg ring-1 ring-zinc-100">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Opened At</p>
+                  <p className="text-sm font-bold text-zinc-900 mt-1">
+                    {drawer?.openedAt ? new Date(drawer.openedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '-'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCloseModal(true)}
+                className="w-full h-10 bg-rose-500 text-white rounded-lg hover:bg-rose-600 font-semibold text-sm transition-colors inline-flex items-center justify-center gap-2"
+              >
+                <Lock size={16} />
+                Close Drawer
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-6 bg-zinc-50 rounded-lg ring-1 ring-zinc-100 text-center">
+                <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-zinc-200 flex items-center justify-center">
+                  <Lock size={24} className="text-zinc-500" />
+                </div>
+                <p className="text-sm font-medium text-zinc-600">Drawer is closed</p>
+                <p className="text-xs text-zinc-500 mt-1">Open drawer to start accepting cash payments</p>
+              </div>
+              <button
+                onClick={() => setShowOpenModal(true)}
+                className="w-full h-10 bg-[#FF5C00] text-white rounded-lg hover:bg-[#e65300] font-semibold text-sm transition-colors inline-flex items-center justify-center gap-2"
+              >
+                <Unlock size={16} />
+                Open Drawer
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Open Drawer Form */}
-      {!isDrawerOpen && (
-        <div className="mb-4">
-          {!showOpenForm ? (
+      {/* Open Drawer Modal */}
+      <Modal
+        isOpen={showOpenModal}
+        onClose={() => setShowOpenModal(false)}
+        title="Open Cash Drawer"
+        maxWidthClass="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-600">Enter the opening cash amount to start accepting payments.</p>
+          
+          <div>
+            <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Opening Amount (₨)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={openingAmount}
+              onChange={(e) => setOpeningAmount(e.target.value)}
+              className="w-full h-10 px-4 rounded-lg border border-zinc-200 text-sm focus:border-zinc-300 outline-none"
+              placeholder="0.00"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Notes (optional)</label>
+            <textarea
+              value={openingNotes}
+              onChange={(e) => setOpeningNotes(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 text-sm focus:border-zinc-300 outline-none resize-none"
+              placeholder="Any notes about drawer opening..."
+              rows={2}
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-2">
             <button
-              onClick={() => setShowOpenForm(true)}
-              className="w-full px-4 py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 font-semibold text-sm transition-colors"
-              disabled={loading}
+              onClick={() => {
+                setShowOpenModal(false);
+                setOpeningAmount('0');
+                setOpeningNotes('');
+              }}
+              disabled={openDrawerMutation.isPending}
+              className="flex-1 h-10 bg-zinc-100 text-zinc-700 rounded-lg hover:bg-zinc-200 font-semibold text-sm transition-colors"
             >
-              Open Drawer
+              Cancel
             </button>
-          ) : (
-            <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50">
-              <h4 className="font-medium mb-3 text-sm text-zinc-900">Opening Drawer</h4>
-              <div className="mb-3">
-                <label className="block text-sm text-zinc-700 font-medium mb-1">Opening Amount (₨)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={openingAmount}
-                  onChange={(e) => setOpeningAmount(e.target.value)}
-                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm text-zinc-700 font-medium mb-1">Notes (optional)</label>
-                <textarea
-                  value={openingNotes}
-                  onChange={(e) => setOpeningNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                  placeholder="Any notes about drawer opening..."
-                  rows={2}
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleOpenDrawer}
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:bg-zinc-300 font-semibold text-sm transition-colors"
-                >
-                  {loading ? 'Opening...' : 'Confirm'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowOpenForm(false);
-                    setOpeningAmount('0');
-                    setOpeningNotes('');
-                  }}
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg hover:bg-zinc-50 font-semibold text-sm transition-colors"
-                >
-                  Cancel
-                </button>
+            <button
+              onClick={handleOpenDrawer}
+              disabled={openDrawerMutation.isPending}
+              className="flex-1 h-10 bg-[#FF5C00] text-white rounded-lg hover:bg-[#e65300] disabled:opacity-60 font-semibold text-sm transition-colors inline-flex items-center justify-center gap-2"
+            >
+              {openDrawerMutation.isPending && <Loader2 size={16} className="animate-spin" />}
+              {openDrawerMutation.isPending ? 'Opening...' : 'Open Drawer'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Close Drawer Modal */}
+      <Modal
+        isOpen={showCloseModal}
+        onClose={() => setShowCloseModal(false)}
+        title="Close Cash Drawer"
+        maxWidthClass="max-w-md"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-blue-50 ring-1 ring-blue-200 rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-zinc-600">Expected Amount:</span>
+              <span className="font-bold text-zinc-900">₨ {drawer?.expectedAmount?.toLocaleString() || 0}</span>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Actual Closing Amount (₨)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={closingAmount}
+              onChange={(e) => setClosingAmount(e.target.value)}
+              className="w-full h-10 px-4 rounded-lg border border-zinc-200 text-sm focus:border-zinc-300 outline-none"
+              placeholder="0.00"
+              autoFocus
+            />
+          </div>
+
+          {closingAmount && !isNaN(parseFloat(closingAmount)) && (
+            <div className="p-3 bg-zinc-50 ring-1 ring-zinc-200 rounded-lg">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-zinc-600">Variance:</span>
+                <span className={`font-bold ${varianceColor}`}>
+                  ₨ {variance.toLocaleString()}
+                </span>
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Close Drawer Form */}
-      {isDrawerOpen && (
-        <div className="mb-4">
-          {!showCloseForm ? (
+          <div>
+            <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Notes (optional)</label>
+            <textarea
+              value={closingNotes}
+              onChange={(e) => setClosingNotes(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 text-sm focus:border-zinc-300 outline-none resize-none"
+              placeholder="Any notes about drawer closing..."
+              rows={2}
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-2">
             <button
-              onClick={() => setShowCloseForm(true)}
-              className="w-full px-4 py-2.5 bg-rose-500 text-white rounded-xl hover:bg-rose-600 font-semibold text-sm transition-colors"
-              disabled={loading}
+              onClick={() => {
+                setShowCloseModal(false);
+                setClosingAmount('');
+                setClosingNotes('');
+              }}
+              disabled={closeDrawerMutation.isPending}
+              className="flex-1 h-10 bg-zinc-100 text-zinc-700 rounded-lg hover:bg-zinc-200 font-semibold text-sm transition-colors"
             >
-              Close Drawer
+              Cancel
             </button>
-          ) : (
-            <div className="border border-gray-300 rounded-md p-4 bg-gray-50">
-              <h4 className="font-medium mb-3 text-sm">Closing Drawer</h4>
-              <div className="mb-3">
-                <label className="block text-sm text-gray-700 mb-1">Expected Amount (₨)</label>
-                <div className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-900">
-                  ₨ {drawer?.expectedAmount?.toFixed(2) || '0.00'}
-                </div>
-              </div>
-              <div className="mb-3">
-                <label className="block text-sm text-gray-700 mb-1">Actual Closing Amount (₨)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={closingAmount}
-                  onChange={(e) => setClosingAmount(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                  placeholder="0.00"
-                  autoFocus
-                />
-              </div>
-
-              {/* Variance Preview */}
-              {closingAmount && !isNaN(parseFloat(closingAmount)) && (
-                <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm">
-                  <p className="text-gray-600 mb-1">
-                    Expected: ₨ {drawer?.expectedAmount?.toFixed(2) || '0.00'}
-                  </p>
-                  <p className="text-gray-600 mb-1">
-                    Actual: ₨ {parseFloat(closingAmount).toFixed(2)}
-                  </p>
-                  <p className={`font-semibold ${varianceColor}`}>
-                    Variance: ₨{' '}
-                    {(parseFloat(closingAmount) - (drawer?.expectedAmount || 0)).toFixed(2)}
-                  </p>
-                </div>
-              )}
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-700 mb-1">Notes (optional)</label>
-                <textarea
-                  value={closingNotes}
-                  onChange={(e) => setClosingNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                  placeholder="Any notes about drawer closing (e.g., shortage reason)..."
-                  rows={2}
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCloseDrawer}
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 font-medium text-sm"
-                >
-                  {loading ? 'Closing...' : 'Confirm & Close'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowCloseForm(false);
-                    setClosingAmount('');
-                    setClosingNotes('');
-                  }}
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 font-medium text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+            <button
+              onClick={handleCloseDrawer}
+              disabled={closeDrawerMutation.isPending}
+              className="flex-1 h-10 bg-rose-500 text-white rounded-lg hover:bg-rose-600 disabled:opacity-60 font-semibold text-sm transition-colors inline-flex items-center justify-center gap-2"
+            >
+              {closeDrawerMutation.isPending && <Loader2 size={16} className="animate-spin" />}
+              {closeDrawerMutation.isPending ? 'Closing...' : 'Close Drawer'}
+            </button>
+          </div>
         </div>
-      )}
-    </div>
+      </Modal>
+    </>
   );
 }
