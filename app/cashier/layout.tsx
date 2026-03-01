@@ -4,6 +4,9 @@ import React, { useEffect } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { AccessDenied } from "@/features/admin/components/ui/access-denied";
+
+const ALLOWED_ROLES = ["CASHIER"];
 
 export default function CashierLayout({
     children,
@@ -14,7 +17,7 @@ export default function CashierLayout({
     const router = useRouter();
 
     useEffect(() => {
-        if (!isLoading && (!user || (user.role !== "CASHIER" && user.role !== "RESTAURANT_ADMIN" && user.role !== "SUPERADMIN"))) {
+        if (!isLoading && !user) {
             router.replace("/auth/login");
         }
     }, [user, isLoading, router]);
@@ -28,6 +31,10 @@ export default function CashierLayout({
     }
 
     if (!user) return null;
+
+    if (!ALLOWED_ROLES.includes(user.role)) {
+        return <AccessDenied />;
+    }
 
     return (
         <div className="min-h-screen bg-white font-dm-sans">
