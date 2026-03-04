@@ -19,11 +19,11 @@ async function gotoAdmin(page: Page) {
 }
 
 /**
- * Orders: go to /admin/orders and mark first eligible order to COMPLETED.
+ * Orders: go to /admin/orders and mark first eligible order to COOKED.
  * Fix: wait for loading state to disappear before reading rows.
  */
 async function completeFirstEligibleOrder(page: Page) {
-    await page.goto("/admin/orders");
+    await page.goto("/admin/orders", { timeout: 30000 });
     await expect(page.getByRole("heading", { name: /^orders$/i })).toBeVisible({ timeout: 20000 });
 
     // ✅ IMPORTANT: wait until "Loading orders..." is gone
@@ -64,10 +64,12 @@ async function completeFirstEligibleOrder(page: Page) {
         const statusSelect = row.locator("select").first();
         await expect(statusSelect).toBeEnabled({ timeout: 10000 });
 
-        await statusSelect.selectOption("COMPLETED");
+        // Note: Admin dropdown only has PENDING, COOKING, COOKED options
+        // Select COOKED as the final kitchen status
+        await statusSelect.selectOption("COOKED");
 
         // Assert row updates (polling also runs)
-        await expect(row).toContainText(/COMPLETED/i, { timeout: 20000 });
+        await expect(row).toContainText(/COOKED/i, { timeout: 20000 });
 
         updated = true;
         break;
@@ -171,7 +173,7 @@ async function createCategory(page: Page, categoryName: string) {
 }
 
 test.describe("Admin Flow (E2E)", () => {
-    test("Admin: login → Orders page → update first eligible order to COMPLETED", async ({ page }) => {
+    test("Admin: login → Orders page → update first eligible order to COOKED", async ({ page }) => {
         await uiLogin(page, ADMIN_EMAIL, PASSWORD);
         await gotoAdmin(page);
         await completeFirstEligibleOrder(page);
